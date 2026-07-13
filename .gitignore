@@ -14,11 +14,13 @@ messagerie.db-journal
 messagerie.db-wal
 messagerie.db-shm
 
-# Logs du serveur
-logs/
+# Logs du serveur (on ignore tout le contenu sauf le fichier .gitkeep)
+logs/*
+!logs/.gitkeep
 
-# Fichiers transferes
-received_files/
+# Fichiers transferes (on ignore tout le contenu sauf le fichier .gitkeep)
+received_files/*
+!received_files/.gitkeep
 
 # Document confidentiel
 PROGRES-M1-IG.pdf
