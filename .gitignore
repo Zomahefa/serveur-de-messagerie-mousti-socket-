@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.egg-info/
+dist/
+build/
+
+# Base de donnees (generee par init_db.py)
+messagerie.db
+messagerie.db-journal
+messagerie.db-wal
+messagerie.db-shm
+
+# Logs du serveur
+logs/
+
+# Fichiers transferes
+received_files/
+
+# Document confidentiel
+PROGRES-M1-IG.pdf
+
+# Environnements virtuels
+venv/
+.venv/
+env/
+.env/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# IDE / Editeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
