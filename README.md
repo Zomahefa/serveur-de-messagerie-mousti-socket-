@@ -140,7 +140,7 @@ Chaque client maintient une connexion TCP persistante avec le serveur. Les messa
 
 ```bash
 git clone https://github.com/Zomahefa/serveur-de-messagerie-mousti-socket-.git
-cd serveur_messagerie
+cd serveur-de-messagerie-mousti-socket-/
 ```
 
 ### Installer les dependances
