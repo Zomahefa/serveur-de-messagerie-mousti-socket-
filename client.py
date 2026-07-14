@@ -162,6 +162,19 @@ class ChatClient:
             return ImageTk.PhotoImage(result)
         except:
             return None
+
+    def _load_circle_from_bytes(self, data, size=100):
+        try:
+            img = Image.open(io.BytesIO(data)).convert('RGBA')
+            img = img.resize((size, size), Image.LANCZOS)
+            mask = Image.new('L', (size, size), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse((0, 0, size, size), fill=255)
+            result = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+            result.paste(img, (0, 0), mask)
+            return ImageTk.PhotoImage(result)
+        except:
+            return None
     
     def show_profile_dialog(self):
         dialog = tk.Toplevel(self.root)
@@ -192,12 +205,25 @@ class ChatClient:
             for img in self._preview_images:
                 img = None
             self._preview_images.clear()
-            if path and os.path.isfile(path):
+            if not path:
+                photo_preview.config(image='')
+                return
+            if os.path.isfile(path):
                 photo_img = self._load_circle_photo(path, 90)
                 if photo_img:
                     self._preview_images.append(photo_img)
                     photo_preview.config(image=photo_img)
                     return
+            try:
+                raw = bytes.fromhex(path)
+                if len(raw) > 50:
+                    photo_img = self._load_circle_from_bytes(raw, 90)
+                    if photo_img:
+                        self._preview_images.append(photo_img)
+                        photo_preview.config(image=photo_img)
+                        return
+            except:
+                pass
             photo_preview.config(image='')
         
         def _add_field(label_text, show=None, height=1, default=''):
@@ -280,6 +306,10 @@ class ChatClient:
         def save_all():
             new_login = login_w.get().strip()
             new_pwd = pwd_w.get().strip()
+            photo_val = photo_w.get().strip()
+            if photo_val and os.path.isfile(photo_val):
+                with open(photo_val, 'rb') as f:
+                    photo_val = f.read().hex()
             fields = {
                 'bio': bio_w.get('1.0', tk.END).strip() if isinstance(bio_w, tk.Text) else bio_w.get().strip(),
                 'phone': phone_w.get().strip(),
@@ -287,7 +317,7 @@ class ChatClient:
                 'address': address_w.get().strip(),
                 'education': education_w.get().strip(),
                 'work': work_w.get().strip(),
-                'photo': photo_w.get().strip(),
+                'photo': photo_val,
             }
             try:
                 if new_login and new_login != self.username:
@@ -592,8 +622,12 @@ class ChatClient:
             if user and user != self.username:
                 if user not in self.all_users:
                     self.all_users.append(user)
-                if line.startswith('🟢') and user not in self.online_users:
-                    self.online_users.append(user)
+                if line.startswith('🟢'):
+                    if user not in self.online_users:
+                        self.online_users.append(user)
+                else:
+                    if user in self.online_users:
+                        self.online_users.remove(user)
                 self.root.after(0, self.update_lists)
             return
         
@@ -630,7 +664,6 @@ class ChatClient:
             return
         
         if line.startswith('👥') or line.startswith('👤'):
-            self.online_users = []
             self.root.after(0, self.update_lists)
             return
         
@@ -1300,17 +1333,28 @@ class ChatClient:
         def check():
             if profile_data:
                 data = profile_data[0]
-                photo_path = (data.get('photo') or '').strip()
+                photo_val = (data.get('photo') or '').strip()
                 username_online = username in self.online_users
 
-                if photo_path and os.path.isfile(photo_path):
-                    img = self._load_circle_photo(photo_path, 70)
-                    if img:
-                        photo_preview.config(image=img, bg='#075E54')
-                        photo_preview.image = img
-                    else:
-                        photo_preview.config(text='👤', bg='#075E54')
-                else:
+                loaded = False
+                if photo_val:
+                    try:
+                        raw = bytes.fromhex(photo_val)
+                        if len(raw) > 50:
+                            img = self._load_circle_from_bytes(raw, 70)
+                            if img:
+                                photo_preview.config(image=img, bg='#075E54')
+                                photo_preview.image = img
+                                loaded = True
+                    except:
+                        pass
+                    if not loaded and os.path.isfile(photo_val):
+                        img = self._load_circle_photo(photo_val, 70)
+                        if img:
+                            photo_preview.config(image=img, bg='#075E54')
+                            photo_preview.image = img
+                            loaded = True
+                if not loaded:
                     photo_preview.config(text='👤', bg='#075E54')
 
                 status_lbl.config(

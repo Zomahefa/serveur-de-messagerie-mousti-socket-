@@ -470,8 +470,9 @@ class ChatServer:
                                     if receiver and receiver[0] in self.connected_users:
                                         try:
                                             self.connected_users[receiver[0]].send(f"📩 Nouveau message de {username}\n".encode())
-                                        except:
-                                            pass
+                                        except Exception as e:
+                                            logging.warning(f"Echec envoi notification a {receiver_login}: {e}")
+                                            self.connected_users.pop(receiver[0], None)
                                 else:
                                     response = f"❌ Utilisateur {receiver_login} inexistant\n"
                                 client_socket.send(response.encode())
