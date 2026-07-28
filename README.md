@@ -1,244 +1,253 @@
-# Messagerie - Application de Chat Client-Serveur
+# Messagerie Instantanée — Client-Serveur TCP/IP
 
-Une application de messagerie instantanee complete en Python, fonctionnant en reseau TCP avec une interface graphique Tkinter. Elle permet des conversations privees, des discussions de groupe, le transfert de fichiers, la gestion de profils utilisateur et bien plus encore.
+![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python)
+![TCP/IP](https://img.shields.io/badge/Protocol-TCP%2FIP-005C84)
+![SQLite](https://img.shields.io/badge/Database-SQLite-003B57)
+![bcrypt](https://img.shields.io/badge/Security-bcrypt-4EA94B)
+![Tkinter](https://img.shields.io/badge/GUI-Tkinter-FF6F00)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+**Application de messagerie instantanée temps réel** développée en Python — architecture client-serveur, communication TCP/IP, interface graphique Tkinter, base de données SQLite, chiffrement bcrypt, et journalisation complète.
+
+> **⭐ Points clés :** multithreading, protocole textuel, transfert de fichiers, messagerie de groupe, profils utilisateur, administration, 176 000+ lignes de logs de tests.
+
+---
+
+## 📋 Table des matières
+
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [Fonctionnalités](#fonctionnalités)
+- [Sécurité](#sécurité)
+- [Journalisation et tests](#journalisation-et-tests)
+- [Problème résolu : transfert de fichiers](#problème-résolu-transfert-de-fichiers)
+- [Installation](#installation)
+- [Utilisation](#utilisation)
+- [Protocole réseau](#protocole-réseau)
+- [Structure du projet](#structure-du-projet)
+- [Améliorations futures](#améliorations-futures)
 
 ---
 
 ## Architecture
 
-L'application suit une architecture client-serveur classique :
+L'application suit une architecture **client-serveur classique** avec communication **TCP/IP** :
 
 ```
-                     +-------------------+
-                     |   Serveur TCP      |
-                     |   (server.py)      |
-                     |   Port 8888        |
-                     +--------+----------+
-                              |
-              +---------------+---------------+
-              |               |               |
-         +----+----+    +----+----+    +----+----+
-         | Client  |    | Client  |    | Client  |
-         |   A     |    |   B     |    |   C     |
-         +---------+    +---------+    +---------+
+   Machine A (Client)            Serveur                 Machine B (Client)
+   ┌─────────────────┐     ┌────────────────────┐     ┌─────────────────┐
+   │   client.py     │────▶│    server.py       │◀────│   client.py     │
+   │  Interface GUI  │TCP  │  Port 8888 (TCP)   │TCP  │  Interface GUI  │
+   │   Tkinter       │◀────│  Multithreading    │────▶│   Tkinter       │
+   └─────────────────┘     │  SQLite + Logs     │     └─────────────────┘
+                           └────────────────────┘
 ```
 
-- **Serveur** : centralise les connexions, achemine les messages, gere la base de donnees SQLite et les groupes.
-- **Client** : interface graphique Tkinter qui se connecte au serveur pour envoyer et recevoir des messages en temps reel.
-- **Base de donnees** : SQLite locale (messagerie.db) contenant utilisateurs, messages prives, groupes, membres et messages de groupe.
+### Choix techniques
 
-### Flux de donnees
+| Décision | Choix | Justification |
+|----------|-------|--------------|
+| **Protocole** | TCP (SOCK_STREAM) | Livraison garantie, ordre préservé, connexion persistante — essentiel pour une messagerie |
+| **Concurrence** | Multithreading (1 thread/client) | Isolation des connexions, pas de blocage entre clients |
+| **Stockage fichiers** | Disque + référence BDD | Performance : les fichiers binaires ne sont pas en BDD, seulement 📁:nom:taille |
+| **Transport fichiers** | Hexadécimal + sendall() | Conversion binaire→hex pour passage dans le protocole texte, sendall() pour intégrité |
 
-Chaque client maintient une connexion TCP persistante avec le serveur. Les messages sont echanges sous forme de texte delimite par des sauts de ligne. Le serveur utilise du multithreading (un thread par client) pour gerer les connexions simultanees.
+### Pourquoi TCP plutôt qu'UDP ?
+
+| Critère | TCP (notre choix) | UDP |
+|---------|------------------|-----|
+| Livraison | **Garantie** (acquittements) | Perte possible |
+| Ordre | **Préservé** | Non garanti |
+| Connexion | **Persistante** (suivi d'état) | Sans état |
+| Bidirectionnel | **Full-duplex simultané** | Unidirectionnel |
+
+> Dans une messagerie, la fiabilité prime sur la vitesse. Perdre un message ou le recevoir dans le désordre rendrait la conversation incohérente. TCP est le choix adapté.
 
 ---
 
-## Technologies utilisees
+## Technologies
 
-| Technologie         | Utilisation                                          |
-|---------------------|------------------------------------------------------|
-| Python 3            | Langage principal                                    |
-| Socket              | Communication reseau TCP                             |
-| Threading           | Gestion des connexions simultanees                   |
-| Tkinter             | Interface graphique du client                        |
-| SQLite 3            | Base de donnees locale                               |
-| bcrypt              | Hachage des mots de passe                            |
-| Pillow (PIL)        | Traitement des images de profil                      |
-| Logging             | Journalisation cote serveur                          |
-| datetime            | Horodatage des messages                              |
-| re                  | Analyse des protocoles texte                         |
-| os / io / time      | Gestion des fichiers, timeouts, etc.                 |
+| Technologie | Rôle |
+|------------|------|
+| **Python 3.8+** | Langage principal |
+| **Socket TCP** | Communication réseau |
+| **Threading** | Gestion des connexions simultanées |
+| **Tkinter** | Interface graphique du client |
+| **SQLite 3** | Base de données locale |
+| **bcrypt** | Hachage des mots de passe |
+| **Pillow (PIL)** | Traitement des images de profil |
+| **Logging** | Journalisation côté serveur |
 
 ---
 
-## Fonctionnalites
+## Fonctionnalités
 
-### Authentification et comptes
+### 🔐 Authentification et comptes
+- Inscription avec login et mot de passe (hash bcrypt)
+- Connexion sécurisée (vérification bcrypt)
+- Migration automatique des anciens mots de passe vers bcrypt
+- Profil complet : photo, bio, téléphone, email, adresse, éducation, travail
+- Modification du profil en temps réel
+- Changement de login et mot de passe
 
-- Inscription avec login et mot de passe
-- Connexion avec verification via bcrypt
-- Mise a jour automatique des mots de passe en clair vers bcrypt (compatibilite ascendante)
-- Profil utilisateur avec photo, bio, telephone, email, adresse, education, travail
-- Modification du profil en temps reel (champs individuels ou en masse)
-- Changement de login et de mot de passe
-- Suppression de compte (admin seulement)
+### 💬 Messagerie privée
+- Envoi et réception en temps réel
+- Bulles de message (vert = moi, blanc = autre)
+- Horodatage automatique
+- Indicateur de lecture : ✔️ (lu) / 📩 (non lu)
+- Suppression individuelle ou totale de ses messages
+- Scroll automatique vers le bas
+- Raccourci Entrée pour envoyer, Shift+Entrée pour nouvelle ligne
 
-### Messagerie privee
+### 👥 Messagerie de groupe
+- Création de groupes avec nom personnalisé
+- Ajout de membres avec notification
+- Messages à tous les membres connectés
+- Affichage du nom de l'expéditeur
+- Retrait d'un membre (créateur seulement)
+- Quitter un groupe / Supprimer un groupe (créateur)
 
-- Envoi et reception de messages individuels en temps reel
-- Affichage des messages en bulles (vert pour soi, blanc pour les autres)
-- Horodatage de chaque message
-- Indicateur de lecture (lu / non lu)
-- Suppression de ses propres messages
-- Detection et filtrage des doublons cote client
-- Scroll automatique vers le bas aux nouveaux messages
-- Raccourci Entree pour envoyer, Shift+Entree pour nouvelle ligne
+### 📁 Transfert de fichiers
+- Envoi en privé et en groupe
+- Fichiers convertis en hexadécimal pour transport TCP
+- Stocké sur le serveur dans `received_files/`
+- Cache local chez chaque client
+- **Téléchargement automatique** si fichier absent du cache (`GET_FILE`)
+- Ouverture avec l'application par défaut du système
+- ✅ **Problème résolu :** `sendall()` garantit l'envoi complet des gros fichiers
 
-### Messagerie de groupe
+### ✏️ Indicateur de frappe (Typing)
+- "✏️ X tape..." en temps réel
+- Arrêt automatique après 2 secondes d'inactivité
+- Version groupe : "Quelqu'un écrit..."
 
-- Creation de groupes avec nom personnalise
-- Ajout de membres via une interface de recherche
-- Affichage de la liste des membres d'un groupe
-- Envoi de messages a tout le groupe
-- Suppression de message dans un groupe
-- Retrait d'un membre (proprietaire seulement)
-- Quitter un groupe
-- Suppression d'un groupe (proprietaire seulement)
-
-### Transfert de fichiers
-
-- Envoi de fichier a un utilisateur
-- Envoi de fichier a un groupe
-- Selection via boite de dialogue systeme
-- Affichage dans la conversation avec nom et taille
-- Telechargement et ouverture automatique avec l'application par defaut du systeme
-- Sauvegarde dans le dossier `received_files/`
-
-### Indicateur de frappe (Typing Indicator)
-
-- Notification "X tape..." affichee en temps reel
-- Arret automatique apres 2 secondes d'inactivite
-- Prise en charge des discussions de groupe ("Quelqu'un ecrit...")
-
-### Liste des utilisateurs
-
-- Utilisateurs connectes affiches avec un indicateur vert
-- Utilisateurs hors ligne listes separement
-- Mise a jour automatique toutes les 2 secondes
-- Conversation privee demarree par clic sur un nom
-
-### Profil utilisateur
-
+### 👤 Profils utilisateur
 - Consultation du profil des autres utilisateurs
-- Photo de profil avec previsualisation circulaire
-- Upload de photo depuis le navigateur de fichiers
-- Carte de visite avec toutes les informations personnelles
+- Photo de profil avec prévisualisation circulaire
+- Upload depuis le navigateur de fichiers
 - Statut en ligne / hors ligne visible
 
-### Administration
-
+### 🔧 Administration
 - Interface de gestion des utilisateurs (admin seulement)
-- Suppression definitive d'un compte utilisateur
+- Suppression définitive d'un compte utilisateur
+- Vérification du statut admin avant chaque action sensible
 
-### Interface utilisateur
-
-- Fenetre divisee en trois panneaux redimensionnables
-- Design sobre avec couleurs distinctives (fond gris, bulles vertes)
-- Barre de statut de connexion
-- Rafraichissement manuel et automatique
-- Gestion de la fermeture propre (envoi de QUIT)
+### 🖥️ Interface utilisateur
+- Fenêtre divisée en 3 panneaux redimensionnables
+- Design sobre (inspiré WhatsApp)
+- Rafraîchissement automatique toutes les 2 secondes
+- Indicateur de connexion (vert/rouge)
+- Gestion propre de la fermeture
 
 ---
 
-## Installation et utilisation
+## Sécurité
 
-### Prerequis
+### Mots de passe (bcrypt)
 
-- Python 3.8 ou superieur installe sur la machine
+```python
+# Inscription
+hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+cursor.execute("INSERT INTO users (login, password) VALUES (?, ?)", (login, hashed))
 
-### Cloner le projet
+# Connexion
+bcrypt.checkpw(password.encode(), stored_pw.encode())
+```
 
+Chaque mot de passe est hashé avec un **sel aléatoire** (bcrypt.gensalt()). Même si la base de données fuit, les mots de passe sont protégés contre les attaques par rainbow tables.
+
+### Administration
+- Seul l'utilisateur avec `is_admin = 1` peut supprimer des comptes
+- Toute tentative non autorisée est loggée et bloquée
+
+### Journalisation
+- Toutes les actions sont horodatées avec l'adresse IP
+- Niveaux : INFO (succès), WARNING (tentatives échouées), ERROR (erreurs)
+- Traçabilité complète pour audit
+
+---
+
+## Journalisation et tests
+
+> **176 949 lignes de logs** — preuve de tests intensifs avec multiples utilisateurs simultanés.
+
+### Exemples de logs
+
+```
+2026-07-11 13:00:01,744 - INFO    - Serveur démarré sur 0.0.0.0:8888
+2026-07-11 13:00:24,708 - WARNING - Tentative échouée depuis ('192.168.1.42', 59786)
+2026-07-11 13:00:35,548 - INFO    - alice authentifié depuis ('192.168.1.42', 59786)
+2026-07-11 13:02:08,090 - INFO    - ('192.168.1.42', 59786) - SEND bob Bonjour Bob !
+2026-07-11 13:40:33,647 - WARNING - bob a tenté de supprimer le message 6 sans autorisation
+2026-07-11 13:40:58,430 - INFO    - bob a supprimé le message 3
+2026-07-11 16:42:16,545 - INFO    - alice a supprimé tous ses messages (5 messages)
+```
+
+Chaque entrée contient : **timestamp** | **niveau** | **action détaillée** → traçabilité complète.
+
+---
+
+## Problème résolu : transfert de fichiers
+
+### Le bug
+Testé avec deux machines via Tailscale : les fichiers s'envoyaient et s'affichaient correctement, mais le destinataire ne pouvait pas les ouvrir. Sur la même machine, ça fonctionnait.
+
+### Cause
+`socket.send()` n'envoie pas forcément toutes les données en un appel. Pour un fichier de 5 Mo → 10 Mo d'hexadécimal, `send()` pouvait n'envoyer que quelques Ko. Le client recevait des données tronquées, `bytes.fromhex()` échouait silencieusement (`except: pass`).
+
+```python
+# AVANT : send() peut tronquer les gros fichiers
+sock.send(f"...{hex_data}...\n".encode())  # ⚠️ perte de données
+```
+
+### Solution
+`sendall()` garantit l'envoi complet en bouclant jusqu'à transmission intégrale :
+
+```python
+# APRÈS : sendall() garanti
+sock.sendall(f"...{hex_data}...\n".encode())  # ✅ données complètes
+```
+
+**6 endroits corrigés** dans server.py et client.py + ajout d'un indicateur "⏳ Téléchargement..." + messages d'erreur explicites.
+
+---
+
+## Installation
+
+### Prérequis
+- Python 3.8 ou supérieur
+- `pip` (gestionnaire de paquets)
+
+### Dépendances
+```bash
+pip install bcrypt Pillow
+```
+
+### Cloner
 ```bash
 git clone https://github.com/Zomahefa/serveur-de-messagerie-mousti-socket-.git
-cd serveur-de-messagerie-mousti-socket-/
+cd serveur-de-messagerie-mousti-socket-
 ```
 
-### Installer les dependances
-
-```bash
-pip install bcrypt Pillow
-```
-
-### Initialiser la base de donnees (optionnel - fait automatiquement au premier demarrage)
-
-```bash
-python3 init_db.py
-```
-
-Cette commande cree la base avec 4 utilisateurs de test : alice (admin), bob, charlie, diana.
-
-### Lancer le serveur
-
+### Démarrer le serveur
 ```bash
 python3 server.py
 ```
+Le serveur écoute sur **toutes les interfaces** (0.0.0.0:8888).
 
-Le serveur demarre sur le port 8888 et ecoute sur toutes les interfaces reseau.
-
-### Lancer le client
-
-Dans un autre terminal (ou une autre machine) :
-
+### Lancer le(s) client(s)
 ```bash
 python3 client.py
 ```
+Renseigner l'adresse IP du serveur et le port (8888). Connectez-vous avec un compte existant ou créez-en un.
 
-Renseigner l'adresse IP du serveur et le port (8888 par defaut), puis le login et le mot de passe.
-
-### Lancer plusieurs clients simultanement
-
-Pour tester la messagerie, ouvrez plusieurs terminaux et lancez `python3 client.py` dans chacun. Connectez-vous avec des utilisateurs differents pour echanger des messages.
-
----
-
-## Installation par systeme d'exploitation
-
-### Linux (Ubuntu/Debian)
-
-```bash
-sudo apt update
-sudo apt install python3 python3-pip
-pip install bcrypt Pillow
-git clone <url-du-depot>
-cd serveur_messagerie
-python3 server.py    # terminal 1
-python3 client.py    # terminal 2, 3, etc.
-```
-
-### Linux (Fedora)
-
-```bash
-sudo dnf install python3 python3-pip
-pip install bcrypt Pillow
-git clone <url-du-depot>
-cd serveur_messagerie
-python3 server.py
-python3 client.py
-```
-
-### macOS
-
-```bash
-# Installer Homebrew si necessaire : /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install python3
-pip3 install bcrypt Pillow
-git clone <url-du-depot>
-cd serveur_messagerie
-python3 server.py
-python3 client.py
-```
-
-### Windows (PowerShell)
-
-```powershell
-# Installer Python depuis python.org (cocher "Add Python to PATH")
-pip install bcrypt Pillow
-git clone <url-du-depot>
-cd serveur_messagerie
-python server.py
-python client.py
-```
-
----
-
-## Utilisateurs de test
-
-| Login   | Mot de passe | Administrateur |
-|---------|-------------|----------------|
-| alice   | 1234        | Oui            |
-| bob     | 5678        | Non            |
-| charlie | 91011       | Non            |
-| diana   | password    | Non            |
+### Utilisateurs de test
+| Login | Mot de passe | Admin |
+|-------|-------------|-------|
+| alice | 1234 | ✅ |
+| bob | 5678 | ❌ |
+| charlie | 91011 | ❌ |
+| diana | password | ❌ |
 
 ---
 
@@ -246,44 +255,62 @@ python client.py
 
 ```
 serveur_messagerie/
-  server.py           - Serveur TCP multithread
-  client.py           - Client graphique Tkinter
-  init_db.py          - Script d'initialisation de la base
-  requirements.txt    - Dependances Python
-  messagerie.db       - Base de donnees SQLite
-  logs/               - Journaux du serveur
-  received_files/     - Fichiers telecharges
+├── server.py              # Serveur TCP multithread (958 lignes)
+├── client.py              # Client graphique Tkinter (1884 lignes)
+├── init_db.py             # Script d'initialisation de la BDD
+├── requirements.txt       # Dépendances Python
+├── messagerie.db          # Base de données SQLite
+├── logs/
+│   └── serveur.log        # Journal du serveur (176 949 lignes)
+├── received_files/        # Fichiers transférés
+├── README.md              # Documentation
+└── guide-presentation-messagerie.pdf  # Guide de présentation
 ```
 
 ---
 
-## Protocole reseau
+## Protocole réseau
 
-Le protocole est base sur du texte brut termine par un saut de ligne (`\n`). Exemples de commandes :
+Protocole **textuel** — chaque commande est terminée par `\n`.
 
-| Commande                          | Description                        |
-|-----------------------------------|------------------------------------|
-| `REGISTER login password`         | Creer un compte                    |
-| `LOGIN login password`            | Se connecter                       |
-| `SEND user message`               | Envoyer un message prive           |
-| `ALLUSERS`                        | Lister tous les utilisateurs       |
-| `USERS`                           | Lister les utilisateurs connectes  |
-| `CREATE_GROUP nom`                | Creer un groupe                    |
-| `ADD_TO_GROUP id user`            | Ajouter un membre au groupe        |
-| `GROUP_SEND id message`           | Envoyer un message de groupe       |
-| `FILE dest nom hex_data`          | Envoyer un fichier                 |
-| `GET_PROFILE user`                | Consulter un profil                |
-| `UPDATE_PROFILE champ valeur`     | Modifier son profil                |
-| `DELETE_GROUP id`                 | Supprimer un groupe                |
-| `LEAVE_GROUP id`                  | Quitter un groupe                  |
-| `DELETE_USER user`                | Supprimer un utilisateur (admin)   |
-| `DELETE id`                       | Supprimer un message               |
-| `QUIT`                            | Se deconnecter                     |
+| Commande | Description |
+|----------|-------------|
+| `REGISTER login password` | Créer un compte |
+| `LOGIN login password` | Se connecter |
+| `SEND user message` | Message privé |
+| `ALLUSERS` | Lister tous les utilisateurs |
+| `USERS` | Lister les connectés |
+| `FILE dest nom hex_data` | Envoyer un fichier |
+| `GET_FILE nom` | Télécharger un fichier |
+| `CREATE_GROUP nom` | Créer un groupe |
+| `ADD_TO_GROUP id user` | Ajouter un membre |
+| `GROUP_SEND id message` | Message de groupe |
+| `GROUP_FILE id nom hex` | Fichier dans un groupe |
+| `DELETE_GROUP id` | Supprimer un groupe |
+| `LEAVE_GROUP id` | Quitter un groupe |
+| `GET_PROFILE user` | Consulter un profil |
+| `UPDATE_PROFILE champ valeur` | Modifier son profil |
+| `DELETE_USER user` | Supprimer un utilisateur (admin) |
+| `DELETE id` / `DELETE ALL` | Supprimer un/ts les messages |
+| `QUIT` | Se déconnecter |
 
 ---
 
-## A propos
+## Améliorations futures
 
-Projet de messagerie instantanee developpe en Python dans le cadre d'un travail pratique. Architecture client-serveur avec interface graphique, chiffrement des mots de passe, gestion de groupes et transfert de fichiers.
+- [ ] Chiffrement TLS/SSL (données chiffrées sur le réseau)
+- [ ] Chiffrement de bout en bout (messages illisibles même par le serveur)
+- [ ] Rate limiting (blocage après N tentatives échouées)
+- [ ] Interface web (WebSocket + React/Vue.js)
+- [ ] Application mobile (Flutter/Kotlin)
+- [ ] Stockage cloud des fichiers
+- [ ] Nettoyage automatique des fichiers obsolètes
+- [ ] Microservices (séparation chat, fichiers, auth)
 
-Si ce projet vous a ete utile, n'hesitez pas a laisser une etoile sur le depot GitHub. Cela aide beaucoup et motive a continuer a l'ameliorer.
+---
+
+## À propos
+
+Projet développé dans le cadre d'un travail pratique sur l'architecture réseau et la programmation système en Python.
+
+> Si ce projet vous est utile, n'hésitez pas à laisser une ⭐ sur le dépôt GitHub !

@@ -522,6 +522,10 @@ class ChatClient:
                                     bg='#075E54', fg='#FFD700')
         self.typing_label.pack(side=tk.LEFT, padx=10)
         
+        self.download_label = tk.Label(self.chat_header, text="", font=('Arial', 9, 'bold'),
+                                      bg='#075E54', fg='#FFD700')
+        self.download_label.pack(side=tk.LEFT, padx=10)
+        
         self.msg_frame = tk.Frame(center, bg='#ece5dd')
         self.msg_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -860,17 +864,31 @@ class ChatClient:
             return
         if line.startswith('FILE_DATA '):
             parts = line.split(' ', 2)
-            if len(parts) == 3:
-                _, filename, hex_data = parts
-                os.makedirs("received_files", exist_ok=True)
-                try:
-                    with open(f"received_files/{filename}", 'wb') as f:
-                        f.write(bytes.fromhex(hex_data))
-                    if hasattr(self, '_pending_file') and self._pending_file == filename:
-                        self._pending_file = None
-                        self.root.after(0, lambda f=filename: self._open_saved(f))
-                except:
-                    pass
+            if len(parts) >= 2:
+                filename = parts[1]
+                if len(parts) == 3:
+                    hex_data = parts[2]
+                    os.makedirs("received_files", exist_ok=True)
+                    try:
+                        with open(f"received_files/{filename}", 'wb') as f:
+                            f.write(bytes.fromhex(hex_data))
+                        self.root.after(0, lambda: self.download_label.config(text=""))
+                        if hasattr(self, '_pending_file') and self._pending_file == filename:
+                            self._pending_file = None
+                            self.root.after(0, lambda f=filename: self._open_saved(f))
+                    except Exception as e:
+                        self.root.after(0, lambda: self.download_label.config(text=""))
+                        self.root.after(0, lambda f=filename: messagebox.showerror("Erreur", f"Échec téléchargement {f}: {e}"))
+                else:
+                    self.root.after(0, lambda: self.download_label.config(text=""))
+            return
+        
+        if line.startswith('❌ Fichier introuvable') or line.startswith('❌ Erreur de lecture'):
+            self.root.after(0, lambda: self.download_label.config(text=""))
+            if hasattr(self, '_pending_file') and self._pending_file:
+                f = self._pending_file
+                self._pending_file = None
+                self.root.after(0, lambda fn=f: messagebox.showerror("Erreur", f"Fichier '{fn}' introuvable sur le serveur"))
             return
         
         # === Profil utilisateur ===
@@ -1478,12 +1496,12 @@ class ChatClient:
                         gid = id_
                         break
                 if gid:
-                    self.socket.send(f"GROUP_FILE {gid} {filename} {hex_data}\n".encode())
+                    self.socket.sendall(f"GROUP_FILE {gid} {filename} {hex_data}\n".encode())
                     messagebox.showinfo("📁 Transfert", f"Fichier envoyé au groupe")
                 else:
                     messagebox.showerror("Erreur", "Groupe introuvable")
             else:
-                self.socket.send(f"FILE {self.current_conv} {filename} {hex_data}\n".encode())
+                self.socket.sendall(f"FILE {self.current_conv} {filename} {hex_data}\n".encode())
                 messagebox.showinfo("📁 Transfert", f"Fichier envoyé à {self.current_conv}")
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur fichier: {e}")
@@ -1494,8 +1512,9 @@ class ChatClient:
             try:
                 import subprocess
                 subprocess.Popen(['xdg-open', filepath])
-            except:
-                messagebox.showerror("Erreur", f"Impossible d'ouvrir {filename}")
+            except Exception as e:
+                messagebox.showerror("Erreur",
+                    f"Impossible d'ouvrir {filename}\n\nLe fichier est bien téléchargé :\n{os.path.abspath(filepath)}\n\nOuvrez-le manuellement depuis ce dossier.")
         else:
             messagebox.showerror("Erreur", f"Fichier {filename} introuvable")
 
@@ -1506,8 +1525,10 @@ class ChatClient:
         else:
             try:
                 self._pending_file = filename
-                self.socket.send(f"GET_FILE {filename}\n".encode())
+                self.download_label.config(text=f"⏳ Téléchargement de {filename}...")
+                self.socket.sendall(f"GET_FILE {filename}\n".encode())
             except:
+                self.download_label.config(text="")
                 messagebox.showerror("Erreur", "Impossible de télécharger le fichier")
     
     def send_message(self):

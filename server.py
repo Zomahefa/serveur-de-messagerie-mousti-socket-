@@ -557,7 +557,7 @@ class ChatServer:
                                     for uid, sock in self.connected_users.items():
                                         if self.get_user_by_id(uid) == target:
                                             try:
-                                                sock.send(f"📁 Fichier recu de {username}: {filename}:{size}:{hex_data}\n".encode())
+                                                sock.sendall(f"📁 Fichier recu de {username}: {filename}:{size}:{hex_data}\n".encode())
                                             except:
                                                 pass
                                             break
@@ -575,7 +575,7 @@ class ChatServer:
                                 try:
                                     with open(filepath, 'rb') as f:
                                         hex_data = f.read().hex()
-                                    client_socket.send(f"FILE_DATA {filename} {hex_data}\n".encode())
+                                    client_socket.sendall(f"FILE_DATA {filename} {hex_data}\n".encode())
                                 except:
                                     client_socket.send("❌ Erreur de lecture du fichier\n".encode())
                             else:
@@ -687,7 +687,7 @@ class ChatServer:
                                         m = self.get_user_by_login(m_login)
                                         if m and m[0] in self.connected_users and m[0] != user_id:
                                             try:
-                                                self.connected_users[m[0]].send(
+                                                    self.connected_users[m[0]].sendall(
                                                     f"📁 Fichier recu de {username} (groupe {gname}): {filename}:{size}:{hex_data}\n".encode()
                                                 )
                                             except:
