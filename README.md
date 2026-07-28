@@ -82,7 +82,7 @@ L'application suit une architecture **client-serveur classique** avec communicat
 
 ## Fonctionnalités
 
-### 🔐 Authentification et comptes
+### Authentification et comptes
 - Inscription avec login et mot de passe (hash bcrypt)
 - Connexion sécurisée (vérification bcrypt)
 - Migration automatique des anciens mots de passe vers bcrypt
