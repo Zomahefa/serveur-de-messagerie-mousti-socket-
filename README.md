@@ -13,7 +13,7 @@
 
 ---
 
-## 📋 Table des matières
+## Table des matières
 
 - [Architecture](#architecture)
 - [Technologies](#technologies)
@@ -90,7 +90,7 @@ L'application suit une architecture **client-serveur classique** avec communicat
 - Modification du profil en temps réel
 - Changement de login et mot de passe
 
-### 💬 Messagerie privée
+###  Messagerie privée
 - Envoi et réception en temps réel
 - Bulles de message (vert = moi, blanc = autre)
 - Horodatage automatique
@@ -99,7 +99,7 @@ L'application suit une architecture **client-serveur classique** avec communicat
 - Scroll automatique vers le bas
 - Raccourci Entrée pour envoyer, Shift+Entrée pour nouvelle ligne
 
-### 👥 Messagerie de groupe
+###  Messagerie de groupe
 - Création de groupes avec nom personnalisé
 - Ajout de membres avec notification
 - Messages à tous les membres connectés
@@ -107,32 +107,32 @@ L'application suit une architecture **client-serveur classique** avec communicat
 - Retrait d'un membre (créateur seulement)
 - Quitter un groupe / Supprimer un groupe (créateur)
 
-### 📁 Transfert de fichiers
+###  Transfert de fichiers
 - Envoi en privé et en groupe
 - Fichiers convertis en hexadécimal pour transport TCP
 - Stocké sur le serveur dans `received_files/`
 - Cache local chez chaque client
 - **Téléchargement automatique** si fichier absent du cache (`GET_FILE`)
 - Ouverture avec l'application par défaut du système
-- ✅ **Problème résolu :** `sendall()` garantit l'envoi complet des gros fichiers
+- Utilisation du fonction `sendall()` qui garantit l'envoi complet des gros fichiers
 
-### ✏️ Indicateur de frappe (Typing)
-- "✏️ X tape..." en temps réel
+### Indicateur de frappe (Typing)
+- " X tape..." en temps réel
 - Arrêt automatique après 2 secondes d'inactivité
 - Version groupe : "Quelqu'un écrit..."
 
-### 👤 Profils utilisateur
+###  Profils utilisateur
 - Consultation du profil des autres utilisateurs
 - Photo de profil avec prévisualisation circulaire
 - Upload depuis le navigateur de fichiers
 - Statut en ligne / hors ligne visible
 
-### 🔧 Administration
+###  Administration
 - Interface de gestion des utilisateurs (admin seulement)
 - Suppression définitive d'un compte utilisateur
 - Vérification du statut admin avant chaque action sensible
 
-### 🖥️ Interface utilisateur
+###  Interface utilisateur
 - Fenêtre divisée en 3 panneaux redimensionnables
 - Design sobre (inspiré WhatsApp)
 - Rafraîchissement automatique toutes les 2 secondes
@@ -144,16 +144,6 @@ L'application suit une architecture **client-serveur classique** avec communicat
 ## Sécurité
 
 ### Mots de passe (bcrypt)
-
-```python
-# Inscription
-hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-cursor.execute("INSERT INTO users (login, password) VALUES (?, ?)", (login, hashed))
-
-# Connexion
-bcrypt.checkpw(password.encode(), stored_pw.encode())
-```
-
 Chaque mot de passe est hashé avec un **sel aléatoire** (bcrypt.gensalt()). Même si la base de données fuit, les mots de passe sont protégés contre les attaques par rainbow tables.
 
 ### Administration
@@ -184,33 +174,6 @@ Chaque mot de passe est hashé avec un **sel aléatoire** (bcrypt.gensalt()). M�
 ```
 
 Chaque entrée contient : **timestamp** | **niveau** | **action détaillée** → traçabilité complète.
-
----
-
-## Problème résolu : transfert de fichiers
-
-### Le bug
-Testé avec deux machines via Tailscale : les fichiers s'envoyaient et s'affichaient correctement, mais le destinataire ne pouvait pas les ouvrir. Sur la même machine, ça fonctionnait.
-
-### Cause
-`socket.send()` n'envoie pas forcément toutes les données en un appel. Pour un fichier de 5 Mo → 10 Mo d'hexadécimal, `send()` pouvait n'envoyer que quelques Ko. Le client recevait des données tronquées, `bytes.fromhex()` échouait silencieusement (`except: pass`).
-
-```python
-# AVANT : send() peut tronquer les gros fichiers
-sock.send(f"...{hex_data}...\n".encode())  # ⚠️ perte de données
-```
-
-### Solution
-`sendall()` garantit l'envoi complet en bouclant jusqu'à transmission intégrale :
-
-```python
-# APRÈS : sendall() garanti
-sock.sendall(f"...{hex_data}...\n".encode())  # ✅ données complètes
-```
-
-**6 endroits corrigés** dans server.py et client.py + ajout d'un indicateur "⏳ Téléchargement..." + messages d'erreur explicites.
-
----
 
 ## Installation
 
