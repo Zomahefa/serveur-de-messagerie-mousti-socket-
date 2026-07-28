@@ -25,6 +25,9 @@ received_files/*
 # Document confidentiel
 PROGRES-M1-IG.pdf
 
+# Guide de presentation
+guide-presentation-messagerie.pdf
+
 # Environnements virtuels
 venv/
 .venv/
